@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: Invoices API
+  description: API REST para la gestión de facturas.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Entorno local
+tags:
+  - name: Invoices
+    description: Operaciones sobre facturas
+paths:
+  /invoices:
+    post:
+      tags: [Invoices]
+      summary: Crear una factura
+      description: Crea una factura en estado `draft`. No asigna número.
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateRequest'
+            example:
+              clientTaxId: B12345678
+              clientName: Acme Solutions S.L.
+              clientAddress: Calle Mayor 10, 28013 Madrid
+              baseAmount: 1000.00
+              taxAmount: 210.00
+      responses:
+        '201':
+          description: Factura creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+              example:
+                id: 3f2a1b7e-9c4d-4e2a-8b1a-6d5f0c2e1a90
+                number: null
+                status: draft
+                clientTaxId: B12345678
+                clientName: Acme Solutions S.L.
+                clientAddress: Calle Mayor 10, 28013 Madrid
+                baseAmount: 1000.00
+                taxAmount: 210.00
+                totalAmount: 1210.00
+                createdAt: '2026-07-23T09:15:00Z'
+                closedAt: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      tags: [Invoices]
+      summary: Listar facturas
+      description: Lista facturas, filtrable por estado.
+      operationId: listInvoices
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filtra por estado de la factura.
+          schema:
+            $ref: '#/components/schemas/InvoiceStatus'
+          example: closed
+      responses:
+        '200':
+          description: Listado de facturas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+              example:
+                items:
+                  - id: 3f2a1b7e-9c4d-4e2a-8b1a-6d5f0c2e1a90
+                    number: BT001
+                    status: closed
+                    clientTaxId: B12345678
+                    clientName: Acme Solutions S.L.
+                    clientAddress: Calle Mayor 10, 28013 Madrid
+                    baseAmount: 1000.00
+                    taxAmount: 210.00
+                    totalAmount: 1210.00
+                    createdAt: '2026-07-23T09:15:00Z'
+                    closedAt: '2026-07-23T10:00:00Z'
+  /invoices/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceId'
+    get:
+      tags: [Invoices]
+      summary: Obtener el detalle de una factura
+      operationId: getInvoice
+      responses:
+        '200':
+          description: Factura encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Invoices]
+      summary: Modificar una factura en borrador
+      description: Modifica datos de una factura en estado `draft`. No permitido si está `closed`.
+      operationId: updateInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceUpdateRequest'
+            example:
+              baseAmount: 1200.00
+              taxAmount: 252.00
+      responses:
+        '200':
+          description: Factura actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvoiceClosedConflict'
+    delete:
+      tags: [Invoices]
+      summary: Eliminar una factura
+      description: Solo permitido si la factura está en estado `draft`.
+      operationId: deleteInvoice
+      responses:
+        '204':
+          description: Factura eliminada
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvoiceClosedConflict'
+  /invoices/{id}/close:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceId'
+    post:
+      tags: [Invoices]
+      summary: Cerrar una factura
+      description: >
+        Cambia el estado de la factura a `closed` y le asigna el siguiente número
+        correlativo del prefijo. Operación irreversible.
+      operationId: closeInvoice
+      responses:
+        '200':
+          description: Factura cerrada y numerada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+              example:
+                id: 3f2a1b7e-9c4d-4e2a-8b1a-6d5f0c2e1a90
+                number: BT001
+                status: closed
+                clientTaxId: B12345678
+                clientName: Acme Solutions S.L.
+                clientAddress: Calle Mayor 10, 28013 Madrid
+                baseAmount: 1000.00
+                taxAmount: 210.00
+                totalAmount: 1210.00
+                createdAt: '2026-07-23T09:15:00Z'
+                closedAt: '2026-07-23T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: La factura ya está cerrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: invoice_closed
+                message: La factura ya está cerrada.
+components:
+  parameters:
+    InvoiceId:
+      name: id
+      in: path
+      required: true
+      description: Identificador interno de la factura.
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    InvoiceStatus:
+      type: string
+      enum: [draft, closed]
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno, inmutable, independiente del número de factura.
+        number:
+          type: string
+          nullable: true
+          description: Número correlativo con prefijo (ej. BT001). `null` mientras está en `draft`.
+          example: BT001
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        clientTaxId:
+          type: string
+          description: CIF del cliente.
+          example: B12345678
+        clientName:
+          type: string
+          description: Nombre social (razón social) del cliente.
+          example: Acme Solutions S.L.
+        clientAddress:
+          type: string
+          description: Dirección fiscal del cliente.
+          example: Calle Mayor 10, 28013 Madrid
+        baseAmount:
+          type: number
+          format: decimal
+          description: Base imponible.
+          example: 1000.00
+        taxAmount:
+          type: number
+          format: decimal
+          description: Importe del IVA.
+          example: 210.00
+        totalAmount:
+          type: number
+          format: decimal
+          description: baseAmount + taxAmount (calculado).
+          example: 1210.00
+        createdAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - number
+        - status
+        - clientTaxId
+        - clientName
+        - clientAddress
+        - baseAmount
+        - taxAmount
+        - totalAmount
+        - createdAt
+        - closedAt
+    InvoiceList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+    InvoiceCreateRequest:
+      type: object
+      properties:
+        clientTaxId:
+          type: string
+          example: B12345678
+        clientName:
+          type: string
+          example: Acme Solutions S.L.
+        clientAddress:
+          type: string
+          example: Calle Mayor 10, 28013 Madrid
+        baseAmount:
+          type: number
+          format: decimal
+          example: 1000.00
+        taxAmount:
+          type: number
+          format: decimal
+          example: 210.00
+      required:
+        - clientTaxId
+        - clientName
+        - clientAddress
+        - baseAmount
+        - taxAmount
+    InvoiceUpdateRequest:
+      type: object
+      description: Campos opcionales; solo se actualizan los presentes. No permitido si la factura está `closed`.
+      properties:
+        clientTaxId:
+          type: string
+        clientName:
+          type: string
+        clientAddress:
+          type: string
+        baseAmount:
+          type: number
+          format: decimal
+        taxAmount:
+          type: number
+          format: decimal
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+  responses:
+    NotFound:
+      description: La factura no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: invoice_not_found
+            message: La factura solicitada no existe.
+    BadRequest:
+      description: Datos de entrada inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: invalid_request
+            message: Los datos de la factura no son válidos.
+    InvoiceClosedConflict:
+      description: La factura está cerrada y la operación no está permitida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: invoice_closed
+            message: No se puede modificar ni eliminar una factura cerrada.
