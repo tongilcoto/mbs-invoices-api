@@ -13,6 +13,7 @@ services:
 
   app:
     image: ghcr.io/tongilcoto/invoices-api:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       - postgres

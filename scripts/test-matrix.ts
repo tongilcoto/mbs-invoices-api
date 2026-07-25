@@ -72,16 +72,30 @@ function run(
   });
 }
 
+const POSTGRES_COMPOSE_FILE = "postgres-docker-compose.yml";
+
 async function ensurePostgresReady(): Promise<void> {
-  console.log("→ Asegurando que Postgres está levantado (docker compose up -d postgres)...");
-  await run("docker", ["compose", "up", "-d", "postgres"]);
+  console.log(
+    `→ Asegurando que Postgres está levantado (docker compose -f ${POSTGRES_COMPOSE_FILE} up -d postgres)...`
+  );
+  await run("docker", ["compose", "-f", POSTGRES_COMPOSE_FILE, "up", "-d", "postgres"]);
 
   const deadline = Date.now() + 30_000;
   let ready = false;
   while (Date.now() < deadline) {
     const exitCode = await run(
       "docker",
-      ["compose", "exec", "-T", "postgres", "pg_isready", "-U", "invoices"],
+      [
+        "compose",
+        "-f",
+        POSTGRES_COMPOSE_FILE,
+        "exec",
+        "-T",
+        "postgres",
+        "pg_isready",
+        "-U",
+        "invoices",
+      ],
       { allowFailure: true }
     );
     if (exitCode === 0) {

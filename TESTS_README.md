@@ -23,7 +23,7 @@ pnpm test:run    # un solo pase
 
 Estos comandos lanzan **todos** los ficheros de test a la vez. `PERSISTENCE_DRIVER` (de `.env`, por defecto `memory`) solo afecta a `invoices.test.ts` y `secret.test.ts`, que pasan por `createApp()`. Pero `postgres-invoice.repository.test.ts` no mira esa variable en ningún momento — instancia `PostgresInvoiceRepository` directamente porque su propósito es probar ese adaptador en concreto, así que **siempre** necesita Postgres real, sin importar el valor de `PERSISTENCE_DRIVER`.
 
-Por eso, con Vitest "a pelo", para que todo pase necesitas tener el contenedor levantado y migrado igualmente (`docker compose up -d postgres` + `pnpm db:migrate`), aunque estés en modo `memory`. Si quieres ejecutar solo lo que no depende de Postgres, usa el orquestador (`pnpm test:matrix smoke` o `pnpm test:matrix app:memory`) en vez de estos comandos — ver más abajo.
+Por eso, con Vitest "a pelo", para que todo pase necesitas tener el contenedor levantado y migrado igualmente (`docker compose -f postgres-docker-compose.yml up -d postgres` + `pnpm db:migrate`), aunque estés en modo `memory`. Si quieres ejecutar solo lo que no depende de Postgres, usa el orquestador (`pnpm test:matrix smoke` o `pnpm test:matrix app:memory`) en vez de estos comandos — ver más abajo.
 
 ## Orquestador de matriz de configuraciones (`pnpm test:matrix`)
 
@@ -49,9 +49,9 @@ pnpm test:matrix integracion
 pnpm test:matrix all                     # todas, en orden, con resumen final
 ```
 
-Para las configuraciones marcadas con "Levanta Postgres": el script ejecuta `docker compose up -d postgres`, espera a `pg_isready` (hasta 30s), aplica la migración (`runMigration()`) y vacía las tablas (`TRUNCATE`) **antes** de lanzar Vitest — así cada configuración parte de estado limpio, sin pasos manuales.
+Para las configuraciones marcadas con "Levanta Postgres": el script ejecuta `docker compose -f postgres-docker-compose.yml up -d postgres`, espera a `pg_isready` (hasta 30s), aplica la migración (`runMigration()`) y vacía las tablas (`TRUNCATE`) **antes** de lanzar Vitest — así cada configuración parte de estado limpio, sin pasos manuales.
 
-El contenedor de Postgres **no se para automáticamente** al terminar (queda levantado para iterar rápido). Párralo tú cuando termines: `docker compose stop postgres`.
+El contenedor de Postgres **no se para automáticamente** al terminar (queda levantado para iterar rápido). Párralo tú cuando termines: `docker compose -f postgres-docker-compose.yml stop postgres`.
 
 ### Salida
 
