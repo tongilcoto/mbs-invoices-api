@@ -64,14 +64,15 @@ Response `201 Created`:
 
 ### `GET /invoices`
 
-Lista facturas, filtrable por `status`.
+Lista facturas, filtrable por `status` y/o `clientTaxId`.
 
 Query parameters:
 | Parámetro | Tipo | Descripción |
 |---|---|---|
 | `status` | string (opcional) | Filtra por `draft` o `closed`. |
+| `clientTaxId` | string (opcional) | Filtra por el CIF del cliente. |
 
-Ejemplo: `GET /invoices?status=closed`
+Ejemplo: `GET /invoices?status=closed&clientTaxId=B12345678`
 
 Response `200 OK`:
 ```json

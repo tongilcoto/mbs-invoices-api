@@ -52,7 +52,7 @@ paths:
     get:
       tags: [Invoices]
       summary: Listar facturas
-      description: Lista facturas, filtrable por estado.
+      description: Lista facturas, filtrable por estado y/o CIF del cliente.
       operationId: listInvoices
       parameters:
         - name: status
@@ -62,6 +62,13 @@ paths:
           schema:
             $ref: '#/components/schemas/InvoiceStatus'
           example: closed
+        - name: clientTaxId
+          in: query
+          required: false
+          description: Filtra por el CIF del cliente.
+          schema:
+            type: string
+          example: B12345678
       responses:
         '200':
           description: Listado de facturas

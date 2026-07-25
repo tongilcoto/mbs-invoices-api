@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Sin "ports": Postgres no se expone al exterior, solo es alcanzable
+    # desde otros servicios de este mismo compose (por nombre, "postgres").
+
+  app:
+    image: ghcr.io/tongilcoto/invoices-api:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PERSISTENCE_DRIVER: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
